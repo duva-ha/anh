@@ -3,267 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giviso Neural Sync - English Learning Edition</title>
+    <title>English Vocabulary Neural Game</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root { --cyan: #06b6d4; --bg: #050508; }
         body { background: var(--bg); color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; }
         .font-futuristic { font-family: 'Orbitron', sans-serif; }
-        .glass-panel { background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        #network-container { width: 100vw; height: 100vh; background: radial-gradient(circle at center, #0d112d 0%, #050508 100%); }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
         
-        /* Custom Inputs */
-        input::placeholder { color: rgba(255,255,255,0.3); }
-        .type-btn { transition: all 0.2s; border: 1px solid transparent; }
-        .type-btn.active { border-color: white; transform: scale(1.05); box-shadow: 0 0 15px currentColor; }
+        /* Hiệu ứng hào quang cho từ vựng */
+        .word-glow { text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.05); } }
 
-        /* Sliders */
-        .vertical-slider { -webkit-appearance: none; width: 200px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 10px; outline: none; transform: rotate(-90deg); cursor: pointer; }
-        .vertical-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%; background: var(--cyan); }
-        
-        #floating-plus { position: absolute; display: none; width: 35px; height: 35px; background: var(--cyan); border-radius: 50%; color: black; text-align: center; line-height: 35px; font-weight: bold; cursor: pointer; z-index: 100; box-shadow: 0 0 20px var(--cyan); }
+        /* Kim chỉ vòng quay */
+        #pointer { 
+            position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent;
+            border-top: 30px solid #ff4d4d; z-index: 10;
+        }
     </style>
 </head>
-<body>
+<body class="flex flex-col items-center justify-center">
 
-    <!-- HUD Header -->
-    <div class="fixed top-6 left-8 z-50 pointer-events-none">
-        <h1 class="font-futuristic text-2xl text-cyan-400 tracking-tighter uppercase">English_Brain_V32</h1>
-        <div id="sync-status" class="text-[8px] text-gray-500 uppercase tracking-widest flex items-center gap-2">
-            <span id="sync-dot" class="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span> 
-            <span id="sync-text">Neural Cloud: Connected</span>
-        </div>
+    <!-- HUD Tiêu đề -->
+    <div class="fixed top-10 text-center">
+        <h1 class="font-futuristic text-3xl text-cyan-400 tracking-widest uppercase">Vocabulary Quest</h1>
+        <p class="text-[10px] text-gray-500 tracking-[0.3em]">NEURAL LEARNING SYSTEM V4.0</p>
     </div>
 
-    <div id="floating-plus">+</div>
-
-    <!-- Sidebar Control -->
-    <div class="fixed top-24 left-8 z-50 w-64 glass-panel rounded-2xl p-6 border-l-2 border-cyan-500 shadow-2xl">
-        <button onclick="toggleQuizMode()" id="quiz-btn" class="w-full py-3 mb-4 bg-white/5 border border-white/10 rounded-xl text-[9px] text-gray-400 hover:text-white transition uppercase font-bold flex items-center justify-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg>
-            Quiz Mode [Q]
-        </button>
-        <input type="text" id="search-input" oninput="neuralSearch()" placeholder="Search Vocabulary..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-cyan-400 focus:outline-none mb-4 text-white">
+    <div class="flex flex-row items-center gap-20">
         
-        <button onclick="startAddingNode()" class="w-full mt-2 py-3 bg-cyan-600/10 border border-cyan-500/30 rounded-xl text-[9px] text-cyan-400 hover:bg-cyan-600 hover:text-white transition font-bold uppercase tracking-widest">+ New Word [N]</button>
-        
-        <div class="mt-6 pt-4 border-t border-white/5 text-[9px] text-gray-500">
-            * Nháy đúp neuron để đổi màu nhanh<br>
-            * Space: Căn giữa màn hình<br>
-            * Del: Xóa từ đã chọn
+        <!-- Khu vực Vòng quay -->
+        <div class="relative">
+            <div id="pointer"></div>
+            <canvas id="wheel" width="500" height="500" class="rounded-full shadow-[0_0_50px_rgba(6,182,212,0.2)]"></canvas>
+            <button onclick="spin()" id="spin-btn" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-black border-4 border-cyan-500 rounded-full font-futuristic text-cyan-400 text-xs hover:bg-cyan-500 hover:text-black transition-all shadow-[0_0_20px_rgba(6,182,212,0.5)]">START</button>
         </div>
-    </div>
 
-    <!-- Zoom Slider -->
-    <div class="fixed right-[30px] top-1/2 -translate-y-1/2 flex flex-col items-center gap-10 z-[100]">
-        <input type="range" id="zoom-slider" class="vertical-slider" min="0.1" max="3" step="0.1" value="1">
-    </div>
+        <!-- Khu vực hiển thị từ vựng -->
+        <div id="display-area" class="w-[400px] h-[300px] glass rounded-3xl flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
+            <div id="topic-badge" class="absolute top-6 px-4 py-1 border border-cyan-500/50 rounded-full text-[10px] text-cyan-500 font-futuristic uppercase hidden">Topic: ...</div>
+            
+            <div id="word-container" class="hidden">
+                <h2 id="word-en" class="text-5xl font-bold text-white mb-4 word-glow">Word</h2>
+                <p id="word-vi" class="text-xl text-cyan-400/70 italic font-light">Nghĩa tiếng Việt</p>
+                <div class="mt-8 flex gap-2 justify-center" id="progress-dots">
+                    <!-- Dots sinh ra tự động -->
+                </div>
+            </div>
 
-    <!-- Playback System -->
-    <div class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[150] w-[75%] glass-panel p-6 rounded-[2.5rem] border border-white/10 shadow-2xl">
-        <div class="flex items-center gap-4">
-            <button onclick="togglePlay()" class="w-12 h-12 flex items-center justify-center bg-cyan-500/10 border border-cyan-500/30 rounded-full text-cyan-400">
-                <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            </button>
-            <select id="time-unit" class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[9px] text-cyan-400 font-futuristic focus:outline-none">
-                <option value="1">Realtime</option>
-                <option value="86400000">1s = Day</option>
-            </select>
-            <div class="flex-1 px-4 text-center">
-                <input type="range" id="time-slider" oninput="travelTime()" class="w-full h-1 bg-white/5 rounded-lg appearance-none cursor-pointer outline-none" min="0" max="100" value="100">
-                <span id="time-display" class="text-[10px] text-cyan-400 font-mono font-bold mt-2 inline-block">TIMELINE: LIVE</span>
+            <div id="idle-text" class="text-gray-500 text-sm font-light italic">
+                Quay vòng quay để bắt đầu học...
             </div>
         </div>
     </div>
-
-    <!-- Modal Form -->
-    <div id="system-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center bg-black/90 backdrop-blur-xl">
-        <div id="modal-box" class="glass-panel w-96 p-8 rounded-3xl border border-cyan-500/30 relative shadow-2xl">
-            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-500 hover:text-red-500"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-            <h3 class="font-futuristic text-cyan-400 text-[10px] mb-6 uppercase text-center tracking-widest">Connect New Memory</h3>
-            
-            <input type="text" id="modal-en" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm text-white focus:outline-none focus:border-cyan-500 mb-2" placeholder="English Word...">
-            <input type="text" id="modal-vi" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm text-white focus:outline-none focus:border-cyan-500 mb-6" placeholder="Vietnamese Meaning...">
-            
-            <div class="flex gap-2 mb-6" id="type-selector">
-                <button onclick="setType('#3b82f6', this)" class="type-btn flex-1 py-2 rounded-lg bg-blue-500/20 text-blue-400 text-[8px] font-bold uppercase">Noun</button>
-                <button onclick="setType('#22c55e', this)" class="type-btn flex-1 py-2 rounded-lg bg-green-500/20 text-green-400 text-[8px] font-bold uppercase">Verb</button>
-                <button onclick="setType('#eab308', this)" class="type-btn flex-1 py-2 rounded-lg bg-yellow-500/20 text-yellow-400 text-[8px] font-bold uppercase">Adj</button>
-            </div>
-
-            <button id="modal-confirm" class="w-full py-4 rounded-xl bg-cyan-500 text-black text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-cyan-500/20">Sync Neuron</button>
-        </div>
-    </div>
-
-    <div id="network-container"></div>
 
     <script>
-        // --- CONFIG ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyCmTIcdk8mpNY9gp4Cg9AoZsvrByMtTc3Q",
-            authDomain: "qlhs-app.firebaseapp.com",
-            projectId: "qlhs-app",
-            storageBucket: "qlhs-app.firebasestorage.app",
-            messagingSenderId: "24933893013",
-            appId: "1:24933893013:web:db6deb6ea2a80ca244ec9c",
-            databaseURL: "https://qlhs-app-default-rtdb.asia-southeast1.firebasedatabase.app/"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        // 1. Dữ liệu 20 chủ đề (mỗi chủ đề 6 từ)
+        const topics = [
+            { name: "Family", words: [["Father", "Cha"], ["Mother", "Mẹ"], ["Brother", "Anh/Em trai"], ["Sister", "Chị/Em gái"], ["Grandparent", "Ông bà"], ["Cousin", "Anh em họ"]] },
+            { name: "Food", words: [["Bread", "Bánh mì"], ["Rice", "Cơm"], ["Soup", "Súp"], ["Pizza", "Pizza"], ["Salad", "Salad"], ["Steak", "Bít tết"]] },
+            { name: "Travel", words: [["Airport", "Sân bay"], ["Hotel", "Khách sạn"], ["Passport", "Hộ chiếu"], ["Suitcase", "Va li"], ["Ticket", "Vé"], ["Beach", "Bãi biển"]] },
+            { name: "Job", words: [["Doctor", "Bác sĩ"], ["Teacher", "Giáo viên"], ["Engineer", "Kỹ sư"], ["Farmer", "Nông dân"], ["Artist", "Họa sĩ"], ["Nurse", "Y tá"]] },
+            { name: "Body", words: [["Head", "Đầu"], ["Hand", "Tay"], ["Leg", "Chân"], ["Eye", "Mắt"], ["Ear", "Tai"], ["Heart", "Tim"]] },
+            { name: "Tech", words: [["Computer", "Máy tính"], ["Software", "Phần mềm"], ["Internet", "Mạng"], ["Robot", "Rô bốt"], ["Data", "Dữ liệu"], ["Screen", "Màn hình"]] },
+            { name: "Nature", words: [["Mountain", "Núi"], ["River", "Sông"], ["Forest", "Rừng"], ["Ocean", "Đại dương"], ["Flower", "Hoa"], ["Cloud", "Mây"]] },
+            { name: "Emotion", words: [["Happy", "Hạnh phúc"], ["Angry", "Giận dữ"], ["Sad", "Buồn rầu"], ["Brave", "Dũng cảm"], ["Scared", "Sợ hãi"], ["Surprised", "Ngạc nhiên"]] },
+            { name: "Office", words: [["Meeting", "Cuộc họp"], ["Salary", "Lương"], ["Colleague", "Đồng nghiệp"], ["Project", "Dự án"], ["Document", "Tài liệu"], ["Desk", "Bàn làm việc"]] },
+            { name: "Action", words: [["Run", "Chạy"], ["Jump", "Nhảy"], ["Swim", "Bơi"], ["Speak", "Nói"], ["Listen", "Nghe"], ["Think", "Suy nghĩ"]] },
+            { name: "Animal", words: [["Lion", "Sư tử"], ["Elephant", "Voi"], ["Tiger", "Hổ"], ["Bird", "Chim"], ["Fish", "Cá"], ["Snake", "Rắn"]] },
+            { name: "Weather", words: [["Sunny", "Nắng"], ["Rainy", "Mưa"], ["Windy", "Gió"], ["Stormy", "Bão"], ["Snowy", "Tuyết"], ["Foggy", "Sương mù"]] },
+            { name: "Fruit", words: [["Apple", "Táo"], ["Banana", "Chuối"], ["Mango", "Xoài"], ["Grapes", "Nho"], ["Orange", "Cam"], ["Lemon", "Chanh"]] },
+            { name: "School", words: [["Lesson", "Bài học"], ["Student", "Học sinh"], ["Library", "Thư viện"], ["Homework", "Bài tập về nhà"], ["Exam", "Kỳ thi"], ["Eraser", "Cục tẩy"]] },
+            { name: "City", words: [["Street", "Đường phố"], ["Bridge", "Cây cầu"], ["Building", "Tòa nhà"], ["Park", "Công viên"], ["Cinema", "Rạp phim"], ["Market", "Chợ"]] },
+            { name: "Color", words: [["Red", "Đỏ"], ["Blue", "Xanh dương"], ["Green", "Xanh lá"], ["Yellow", "Vàng"], ["Purple", "Tím"], ["Black", "Đen"]] },
+            { name: "Music", words: [["Guitar", "Đàn ghi-ta"], ["Piano", "Đàn piano"], ["Singer", "Ca sĩ"], ["Song", "Bài hát"], ["Rhythm", "Giai điệu"], ["Concert", "Buổi hòa nhạc"]] },
+            { name: "Kitchen", words: [["Knife", "Con dao"], ["Spoon", "Cái thìa"], ["Plate", "Cái đĩa"], ["Stove", "Cái bếp"], ["Fridge", "Tủ lạnh"], ["Pot", "Cái nồi"]] },
+            { name: "Clothing", words: [["Shirt", "Áo sơ mi"], ["Pants", "Quần dài"], ["Shoes", "Giày"], ["Hat", "Mũ"], ["Dress", "Váy"], ["Jacket", "Áo khoác"]] },
+            { name: "Time", words: [["Minute", "Phút"], ["Second", "Giây"], ["Hour", "Giờ"], ["Day", "Ngày"], ["Month", "Tháng"], ["Year", "Năm"]] }
+        ];
 
-        let nodes = new vis.DataSet();
-        let edges = new vis.DataSet();
-        let isQuizMode = false, isAddNodeMode = false, isPlaying = false, playInterval = null;
-        let selectedNodeId = null;
-        let currentColor = '#06b6d4';
-        const colorsCycle = ['#06b6d4', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#f43f5e'];
+        // 2. Vẽ vòng quay
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const numSlices = topics.length;
+        const sliceAngle = (2 * Math.PI) / numSlices;
+        let currentRotation = 0;
 
-        const network = new vis.Network(document.getElementById('network-container'), { nodes, edges }, {
-            nodes: { 
-                shape: 'dot', 
-                font: { color: '#ffffff', face: 'Inter', size: 15, multi: true, strokeWidth: 4, strokeColor: 'rgba(0,0,0,0.7)' },
-                borderWidth: 2, 
-                shadow: { enabled: true, color: 'rgba(0,0,0,0.5)' } 
-            },
-            edges: { color: 'rgba(6, 182, 212, 0.2)', arrows: 'to', smooth: { type: 'continuous' }, dashes: [5, 10] },
-            physics: { enabled: true, barnesHut: { gravitationalConstant: -3000, centralGravity: 0.1, springLength: 150 } }
-        });
+        function drawWheel() {
+            ctx.clearRect(0,0,500,500);
+            topics.forEach((topic, i) => {
+                const angle = i * sliceAngle + currentRotation;
+                ctx.beginPath();
+                ctx.moveTo(250, 250);
+                ctx.arc(250, 250, 240, angle, angle + sliceAngle);
+                ctx.fillStyle = i % 2 === 0 ? "#0d112d" : "#06b6d422";
+                ctx.fill();
+                ctx.strokeStyle = "#06b6d455";
+                ctx.stroke();
 
-        // --- CLOUD ENGINE ---
-        function saveData() {
-            const data = {
-                nodes: nodes.get().map(n => { const { x, y, ...rest } = n; return JSON.parse(JSON.stringify(rest)); }),
-                edges: edges.get().map(e => JSON.parse(JSON.stringify(e))),
-                updateAt: Date.now()
-            };
-            db.ref('english_brain').set(data);
+                // Vẽ chữ
+                ctx.save();
+                ctx.translate(250, 250);
+                ctx.rotate(angle + sliceAngle/2);
+                ctx.fillStyle = "#06b6d4";
+                ctx.font = "bold 10px Orbitron";
+                ctx.fillText(topic.name, 120, 5);
+                ctx.restore();
+            });
         }
+        drawWheel();
 
-        function loadData() {
-            db.ref('english_brain').on('value', (snap) => {
-                const val = snap.val();
-                if(val && val.nodes) {
-                    nodes.update(val.nodes);
-                    if(val.edges) edges.update(val.edges);
-                    updateLabels();
-                } else if(nodes.length === 0) {
-                    nodes.add({ id: Date.now(), label: 'CENTER', wordEn: 'CORE', wordVi: 'TRUNG TÂM', color: '#06b6d4' });
+        // 3. Logic quay
+        let isSpinning = false;
+        function spin() {
+            if (isSpinning) return;
+            isSpinning = true;
+            
+            // Reset UI
+            document.getElementById('idle-text').style.display = 'block';
+            document.getElementById('word-container').classList.add('hidden');
+            document.getElementById('topic-badge').classList.add('hidden');
+
+            const spinRotation = Math.random() * 2000 + 2000; // Quay tối thiểu 2000 độ
+            const duration = 4000;
+            let start = null;
+
+            function animate(timestamp) {
+                if (!start) start = timestamp;
+                const progress = timestamp - start;
+                const easeOut = 1 - Math.pow(1 - progress / duration, 3);
+                currentRotation = (easeOut * spinRotation * Math.PI) / 180;
+                drawWheel();
+
+                if (progress < duration) {
+                    requestAnimationFrame(animate);
+                } else {
+                    isSpinning = false;
+                    determineWinner();
                 }
-            });
+            }
+            requestAnimationFrame(animate);
         }
 
-        // --- CORE LOGIC ---
-        function setType(color, btn) {
-            currentColor = color;
-            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+        // 4. Xác định chủ đề và hiển thị từ vựng
+        function determineWinner() {
+            // Tính toán góc dừng (kim chỉ ở góc -90 độ so với trục Canvas)
+            const normalizedRotation = (currentRotation % (2 * Math.PI));
+            const winningIndex = Math.floor(
+                (numSlices - (normalizedRotation / sliceAngle)) % numSlices
+            );
+            
+            const selectedTopic = topics[winningIndex];
+            startLearning(selectedTopic);
         }
 
-        function startAddingNode() { isAddNodeMode = true; document.getElementById('network-container').style.cursor = 'crosshair'; }
+        function startLearning(topic) {
+            const idleText = document.getElementById('idle-text');
+            const wordContainer = document.getElementById('word-container');
+            const topicBadge = document.getElementById('topic-badge');
+            const dotsContainer = document.getElementById('progress-dots');
 
-        network.on("click", (p) => {
-            if (isAddNodeMode && p.nodes.length === 0) {
-                const pos = p.pointer.canvas;
-                showModal((en, vi, color) => {
-                    nodes.add({ id: Date.now(), wordEn: en, wordVi: vi, color: color, x: pos.x, y: pos.y });
-                    saveData(); updateLabels();
+            idleText.style.display = 'none';
+            wordContainer.classList.remove('hidden');
+            topicBadge.classList.remove('hidden');
+            topicBadge.innerText = `Topic: ${topic.name}`;
+            
+            // Tạo dots tiến trình
+            dotsContainer.innerHTML = '';
+            for(let i=0; i<6; i++) {
+                const dot = document.createElement('div');
+                dot.className = "w-2 h-2 rounded-full bg-white/10 transition-all duration-500";
+                dotsContainer.appendChild(dot);
+            }
+
+            // Chạy chuỗi từ vựng
+            let wordIndex = 0;
+            const interval = setInterval(() => {
+                if (wordIndex >= 6) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        alert(`Hoàn thành chủ đề: ${topic.name}!`);
+                    }, 1000);
+                    return;
+                }
+
+                // Cập nhật nội dung
+                const [en, vi] = topic.words[wordIndex];
+                document.getElementById('word-en').innerText = en;
+                document.getElementById('word-vi').innerText = vi;
+
+                // Cập nhật dots
+                Array.from(dotsContainer.children).forEach((dot, idx) => {
+                    dot.className = idx <= wordIndex ? "w-4 h-2 rounded-full bg-cyan-500 shadow-[0_0_10px_#06b6d4]" : "w-2 h-2 rounded-full bg-white/10";
                 });
-                isAddNodeMode = false; document.getElementById('network-container').style.cursor = 'default';
-            } else if (p.nodes.length > 0) {
-                selectedNodeId = p.nodes[0];
-                document.getElementById('floating-plus').style.cssText = `display:block;left:${p.pointer.DOM.x+30}px;top:${p.pointer.DOM.y-30}px;`;
-            } else { document.getElementById('floating-plus').style.display = 'none'; }
-        });
 
-        document.getElementById('floating-plus').onclick = () => {
-            showModal((en, vi, color) => {
-                const nid = Date.now();
-                nodes.add({ id: nid, wordEn: en, wordVi: vi, color: color });
-                edges.add({ from: selectedNodeId, to: nid });
-                saveData(); updateLabels();
-            });
-        };
-
-        function showModal(cb) {
-            document.getElementById('system-modal').classList.remove('hidden');
-            const enIn = document.getElementById('modal-en');
-            const viIn = document.getElementById('modal-vi');
-            enIn.value = ''; viIn.value = ''; enIn.focus();
-            document.getElementById('modal-confirm').onclick = () => {
-                if(!enIn.value || !viIn.value) return;
-                closeModal(); cb(enIn.value, viIn.value, currentColor);
-            };
+                wordIndex++;
+            }, 3000); // 3 giây mỗi từ
         }
-
-        function closeModal() { document.getElementById('system-modal').classList.add('hidden'); }
-
-        function toggleQuizMode() { 
-            isQuizMode = !isQuizMode; 
-            document.getElementById('quiz-btn').classList.toggle('bg-red-500/20');
-            document.getElementById('quiz-btn').classList.toggle('text-red-400');
-            updateLabels(); 
-        }
-
-        function updateLabels() {
-            nodes.update(nodes.get().map(n => ({
-                id: n.id,
-                label: isQuizMode ? `???\n<small>${n.wordVi}</small>` : `<b>${n.wordEn}</b>\n<small>${n.wordVi}</small>`
-            })));
-        }
-
-        function neuralSearch() {
-            const q = document.getElementById('search-input').value.toLowerCase();
-            nodes.update(nodes.get().map(n => ({
-                id: n.id, opacity: (n.wordEn.toLowerCase().includes(q) || n.wordVi.toLowerCase().includes(q)) ? 1 : 0.05
-            })));
-        }
-
-        // --- TIME ENGINE ---
-        function travelTime() {
-            const val = parseFloat(document.getElementById('time-slider').value);
-            const all = nodes.get(); if (all.length < 1) return;
-            const start = Math.min(...all.map(n => n.id));
-            const current = start + (val / 100) * (Date.now() - start);
-            document.getElementById('time-display').innerText = val == 100 ? "TIMELINE: LIVE" : "PAST: " + new Date(current).toLocaleDateString();
-            nodes.update(all.map(n => ({ id: n.id, hidden: n.id > current })));
-        }
-
-        function togglePlay() {
-            isPlaying = !isPlaying;
-            if (isPlaying) {
-                if (document.getElementById('time-slider').value >= 100) document.getElementById('time-slider').value = 0;
-                document.getElementById('play-icon').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
-                playInterval = setInterval(() => {
-                    let step = (1000 / (Date.now() - Math.min(...nodes.get().map(n => n.id))) * 100);
-                    let newVal = parseFloat(document.getElementById('time-slider').value) + step;
-                    if (newVal < 100) { document.getElementById('time-slider').value = newVal; travelTime(); }
-                    else { document.getElementById('time-slider').value = 100; travelTime(); togglePlay(); }
-                }, 100);
-            } else {
-                document.getElementById('play-icon').innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
-                clearInterval(playInterval);
-            }
-        }
-
-        // --- KEYBOARD ---
-        window.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
-            if (e.key === 'q' || e.key === 'Q') toggleQuizMode();
-            if (e.key === 'n' || e.key === 'N') startAddingNode();
-            if (e.key === 'Delete') {
-                const sel = network.getSelectedNodes();
-                if(sel.length > 0 && confirm('Xóa từ này?')) { nodes.remove(sel[0]); saveData(); }
-            }
-            if (e.code === 'Space') { e.preventDefault(); network.fit({animation:true}); }
-        });
-
-        document.getElementById('zoom-slider').oninput = function() { network.moveTo({ scale: parseFloat(this.value) }); };
-        
-        loadData();
     </script>
 </body>
 </html>
