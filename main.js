@@ -1,12 +1,15 @@
 import { gameData } from './data.js';
-import * as Games from './games.js';
+import * as Games from './game.js';
 
-// Trạng thái game
-let state = { mode: '', topic: '', game: '' };
+// Đối tượng lưu trữ trạng thái hiện tại của người chơi
+let state = {
+    mode: '',  // 'vocabulary' hoặc 'sentence'
+    topic: '', // Tên chủ đề (ví dụ: 'Family')
+    game: ''   // Loại game (ví dụ: 'match')
+};
 
-// Đảm bảo HTML đã load xong mới chạy code
 document.addEventListener('DOMContentLoaded', () => {
-    
+    // 1. Khai báo các màn hình
     const screens = {
         s1: document.getElementById('screen-1'),
         s2: document.getElementById('screen-2'),
@@ -14,17 +17,20 @@ document.addEventListener('DOMContentLoaded', () => {
         s4: document.getElementById('screen-4')
     };
 
-    // Hàm chuyển màn hình
-    const showScreen = (id) => {
-        Object.values(screens).forEach(s => s.classList.remove('active-screen'));
-        document.getElementById(`screen-${id}`).classList.add('active-screen');
+    // Hàm chuyển đổi màn hình mượt mà
+    const showScreen = (screenId) => {
+        Object.values(screens).forEach(s => {
+            if (s) s.classList.remove('active-screen');
+        });
+        const target = document.getElementById(`screen-${screenId}`);
+        if (target) target.classList.add('active-screen');
     };
 
-    // --- SỰ KIỆN MÀN HÌNH 1 (MODE SELECTION) ---
+    // 2. Xử lý Màn hình 1: Chọn Chế độ
     const btnVocab = document.getElementById('select-vocab');
     const btnSentence = document.getElementById('select-sentence');
 
-    if(btnVocab) {
+    if (btnVocab) {
         btnVocab.onclick = () => {
             state.mode = 'vocabulary';
             renderTopics();
@@ -32,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    if(btnSentence) {
+    if (btnSentence) {
         btnSentence.onclick = () => {
             state.mode = 'sentence';
             renderTopics();
@@ -40,57 +46,92 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // --- HÀM RENDER CHỦ ĐỀ (MÀN HÌNH 2) ---
+    // 3. Xử lý Màn hình 2: Hiển thị danh sách chủ đề
     function renderTopics() {
         const grid = document.getElementById('topic-grid');
-        grid.innerHTML = '';
-        gameData.topics.forEach(t => {
-            const b = document.createElement('div');
-            b.className = "glass p-4 rounded-xl btn-main text-center text-sm font-bold uppercase cursor-pointer";
-            b.innerText = t;
-            b.onclick = () => {
-                state.topic = t;
+        if (!grid) return;
+        
+        grid.innerHTML = ''; // Xóa danh sách cũ
+        gameData.topics.forEach(topicName => {
+            const card = document.createElement('div');
+            card.className = "glass p-4 rounded-xl btn-main text-center text-sm font-bold uppercase cursor-pointer transition-all";
+            card.innerText = topicName;
+            
+            card.onclick = () => {
+                state.topic = topicName;
                 renderGameOptions();
                 showScreen(3);
             };
-            grid.appendChild(b);
+            grid.appendChild(card);
         });
     }
 
-    // --- HÀM RENDER CHỌN GAME (MÀN HÌNH 3) ---
+    // 4. Xử lý Màn hình 3: Chọn trò chơi tương ứng với chế độ
     function renderGameOptions() {
         const container = document.getElementById('game-options');
-        container.innerHTML = '';
-        const opts = state.mode === 'vocabulary' 
-            ? [{id:'match', name:'Nối Từ'}, {id:'capsule', name:'Viên Thuốc'}]
-            : [{id:'listen', name:'Nghe & Chọn'}, {id:'build', name:'Ghép Câu'}];
+        if (!container) return;
 
-        opts.forEach(o => {
-            const b = document.createElement('div');
-            b.className = "btn-main glass px-10 py-16 rounded-3xl w-60 text-center font-bold cursor-pointer";
-            b.innerText = o.name;
-            b.onclick = () => launchGame(o.id);
-            container.appendChild(b);
+        container.innerHTML = '';
+        const options = state.mode === 'vocabulary' 
+            ? [{ id: 'match', name: 'Nối Từ' }, { id: 'capsule', name: 'Viên Thuốc' }]
+            : [{ id: 'listen', name: 'Nghe & Chọn' }, { id: 'build', name: 'Ghép Câu' }];
+
+        options.forEach(opt => {
+            const btn = document.createElement('div');
+            btn.className = "btn-main glass px-10 py-16 rounded-3xl w-60 text-center font-bold cursor-pointer text-xl shadow-lg";
+            btn.innerText = opt.name;
+            btn.onclick = () => launchGame(opt.id);
+            container.appendChild(btn);
         });
     }
 
-    // --- KHỞI CHẠY GAME (MÀN HÌNH 4) ---
-    function launchGame(id) {
-        state.game = id;
+    // 5. Màn hình 4: Khởi tạo logic Game cụ thể
+    function launchGame(gameId) {
+        state.game = gameId;
         showScreen(4);
-        document.getElementById('game-title').innerText = `TOPIC: ${state.topic} | ${id.toUpperCase()}`;
-        const box = document.getElementById('game-content');
         
-        // Lấy dữ liệu an toàn (tránh bị undefined)
-        const vocabData = gameData.vocabulary[state.topic] || gameData.vocabulary["Family"];
-        const sentenceData = gameData.sentences[state.topic] || gameData.sentences["Family"];
+        const titleEl = document.getElementById('game-title');
+        if (titleEl) titleEl.innerText = `${state.topic.toUpperCase()} - ${gameId.toUpperCase()}`;
+        
+        const gameBox = document.getElementById('game-content');
+        if (!gameBox) return;
+        gameBox.innerHTML = ''; // Dọn dẹp sân chơi
 
-        if(id === 'match') Games.initMatchGame(box, vocabData);
-        // Sau này bạn sẽ thêm Games.initListenGame... vào đây
+        // Lấy dữ liệu từ data.js
+        const vocabList = gameData.vocabulary[state.topic] || [];
+        const sentenceList = gameData.sentences[state.topic] || [];
+
+        // Gọi hàm từ file game.js
+        switch (gameId) {
+            case 'match':
+                Games.initMatchGame(gameBox, vocabList);
+                break;
+            case 'capsule':
+                // Games.initCapsuleGame(gameBox, vocabList);
+                gameBox.innerHTML = `<p class="text-cyan-400">Game Viên Thuốc đang được phát triển...</p>`;
+                break;
+            case 'listen':
+                // Games.initListenGame(gameBox, sentenceList);
+                gameBox.innerHTML = `<p class="text-cyan-400">Game Nghe & Chọn đang được phát triển...</p>`;
+                break;
+            case 'build':
+                // Games.initBuildGame(gameBox, sentenceList);
+                gameBox.innerHTML = `<p class="text-cyan-400">Game Ghép Câu đang được phát triển...</p>`;
+                break;
+        }
     }
 
-    // --- CÁC NÚT QUAY LẠI ---
-    document.getElementById('exit-game').onclick = () => showScreen(1);
-    document.getElementById('back-to-1').onclick = () => showScreen(1);
-    document.getElementById('back-to-2').onclick = () => showScreen(2);
+    // 6. Gán sự kiện cho các nút quay lại (Navigation)
+    const backTo1 = document.getElementById('back-to-1');
+    if (backTo1) backTo1.onclick = () => showScreen(1);
+
+    const backTo2 = document.getElementById('back-to-2');
+    if (backTo2) backTo2.onclick = () => showScreen(2);
+
+    const exitBtn = document.getElementById('exit-game');
+    if (exitBtn) exitBtn.onclick = () => {
+        if (confirm("Bạn có muốn thoát game không?")) {
+            showScreen(1);
+        }
+    };
 });
