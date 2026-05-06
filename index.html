@@ -11,341 +11,47 @@
         body { background: var(--bg); color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; }
         .font-futuristic { font-family: 'Orbitron', sans-serif; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .screen { display: none; height: 100vh; width: 100vw; flex-direction: column; align-items: center; justify-content: center; position: absolute; top: 0; left: 0; }
+        .screen { display: none; height: 100vh; width: 100vw; flex-direction: column; align-items: center; justify-content: center; position: absolute; }
         .active-screen { display: flex; }
-        .btn-main { transition: all 0.3s; border: 1px solid rgba(6, 182, 212, 0.3); }
+        .btn-main { transition: all 0.3s; border: 1px solid rgba(6, 182, 212, 0.3); cursor: pointer; }
         .btn-main:hover { background: var(--cyan); color: black; box-shadow: 0 0 20px var(--cyan); }
-        
-        /* Game Matching */
-        .match-item { cursor: pointer; transition: 0.2s; }
-        .selected { background: var(--cyan) !important; color: black !important; }
-        
-        /* Game Drag & Drop (Capsule) */
-        #capsule { width: 180px; height: 80px; border-radius: 40px; border: 3px solid var(--cyan); display: flex; align-items: center; justify-content: center; position: relative; font-weight: bold; background: rgba(6, 182, 212, 0.1); }
-        .draggable { cursor: move; padding: 10px 20px; background: rgba(255,255,255,0.1); border-radius: 10px; position: absolute; }
     </style>
 </head>
 <body>
 
-    <!-- MÀN HÌNH 1: LỰA CHỌN CHẾ ĐỘ -->
+    <!-- Màn hình 1: Chọn Chế Độ -->
     <div id="screen-1" class="screen active-screen">
-        <h1 class="font-futuristic text-4xl text-cyan-400 mb-12 tracking-widest uppercase">Select Mode</h1>
+        <h1 class="font-futuristic text-4xl text-cyan-400 mb-12 tracking-widest uppercase">Mode Selection</h1>
         <div class="flex gap-8">
-            <button onclick="selectMode('vocabulary')" class="btn-main glass px-12 py-6 rounded-2xl text-xl font-bold uppercase">Từ vựng (Word)</button>
-            <button onclick="selectMode('sentence')" class="btn-main glass px-12 py-6 rounded-2xl text-xl font-bold uppercase">Câu (Sentence)</button>
+            <div id="select-vocab" class="btn-main glass px-12 py-6 rounded-2xl text-xl font-bold uppercase">Từ vựng</div>
+            <div id="select-sentence" class="btn-main glass px-12 py-6 rounded-2xl text-xl font-bold uppercase">Câu hỏi</div>
         </div>
     </div>
 
-    <!-- MÀN HÌNH 2: CHỌN CHỦ ĐỀ -->
+    <!-- Màn hình 2: Chọn Chủ Đề -->
     <div id="screen-2" class="screen">
         <h1 class="font-futuristic text-2xl text-cyan-400 mb-8 uppercase">Select Topic</h1>
-        <div id="topic-grid" class="grid grid-cols-5 gap-4 p-10 max-w-5xl overflow-y-auto max-h-[70vh]">
-            <!-- 30 chủ đề sẽ được render bằng JS -->
-        </div>
-        <button onclick="goBack(1)" class="mt-8 text-gray-500 hover:text-white uppercase text-xs tracking-widest"> Quay lại</button>
+        <div id="topic-grid" class="grid grid-cols-5 gap-4 p-10 max-w-5xl overflow-y-auto max-h-[70vh]"></div>
+        <button id="back-to-1" class="mt-8 text-gray-500 hover:text-white uppercase text-xs tracking-widest">Quay lại</button>
     </div>
 
-    <!-- MÀN HÌNH 3: CHỌN GAME -->
+    <!-- Màn hình 3: Chọn Game -->
     <div id="screen-3" class="screen">
         <h1 class="font-futuristic text-2xl text-cyan-400 mb-12 uppercase">Select Game</h1>
-        <div id="game-options" class="flex gap-8">
-            <!-- Game options sẽ thay đổi dựa trên mode -->
-        </div>
-        <button onclick="goBack(2)" class="mt-8 text-gray-500 hover:text-white uppercase text-xs tracking-widest"> Quay lại</button>
+        <div id="game-options" class="flex gap-8"></div>
+        <button id="back-to-2" class="mt-8 text-gray-500 hover:text-white uppercase text-xs tracking-widest">Quay lại</button>
     </div>
 
-    <!-- MÀN HÌNH 4: KHÔNG GIAN GAME -->
+    <!-- Màn hình 4: Sân chơi -->
     <div id="screen-4" class="screen">
-        <div id="game-header" class="absolute top-10 flex justify-between w-full px-20">
-            <span id="game-title" class="font-futuristic text-cyan-500">Game Name</span>
-            <button onclick="goBack(3)" class="text-red-500 uppercase text-xs">Thoát Game</button>
+        <div class="absolute top-10 flex justify-between w-full px-20">
+            <span id="game-title" class="font-futuristic text-cyan-500"></span>
+            <button id="exit-game" class="text-red-500 uppercase text-xs font-bold">Thoát Game</button>
         </div>
-        <div id="game-content" class="w-full h-full flex items-center justify-center">
-            <!-- Nội dung game render tại đây -->
-        </div>
+        <div id="game-content" class="w-full h-full flex items-center justify-center"></div>
     </div>
 
-    <script>
-        let gameState = {
-            mode: '', // 'vocabulary' or 'sentence'
-            topic: '',
-            game: ''
-        };
-
-        const data = {
-            topics: ["Family", "Food", "School", "Jobs", "Travel", "Weather", "Body", "Animals", "Tech", "Colors", "Sports", "Music", "Nature", "City", "Health", "Clothing", "Time", "Space", "Emotion", "Actions", "Shapes", "Tools", "Kitchen", "Office", "Transportation", "Numbers", "Daily", "Hobbies", "Fruits", "Buildings"],
-            vocabulary: {
-                "Family": [ {en: "Father", vi: "Cha"}, {en: "Mother", vi: "Mẹ"}, {en: "Sister", vi: "Chị gái"}, {en: "Brother", vi: "Anh trai"} ],
-                "Food": [ {en: "Bread", vi: "Bánh mì"}, {en: "Rice", vi: "Cơm"}, {en: "Apple", vi: "Quả táo"}, {en: "Milk", vi: "Sữa"} ]
-                // ... bạn có thể thêm data cho 30 chủ đề
-            },
-            sentences: {
-                "Family": [
-                    { audio: "How many people are there in your family?", en: "How many people are there in your family?", vi: "Gia đình bạn có bao nhiêu người?", words: ["How", "many", "people", "are", "there", "in", "your", "family?"] },
-                    { audio: "What is your father's name?", en: "What is your father's name?", vi: "Tên bố bạn là gì?", words: ["What", "is", "your", "father's", "name?"] }
-                ]
-            }
-        };
-
-        // Chuyển màn hình
-        function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
-            document.getElementById(`screen-${id}`).classList.add('active-screen');
-        }
-
-        function goBack(id) { showScreen(id); }
-
-        // Logic Màn hình 1
-        function selectMode(mode) {
-            gameState.mode = mode;
-            renderTopics();
-            showScreen(2);
-        }
-
-        // Logic Màn hình 2
-        function renderTopics() {
-            const grid = document.getElementById('topic-grid');
-            grid.innerHTML = '';
-            data.topics.forEach(topic => {
-                const btn = document.createElement('button');
-                btn.className = "glass p-4 rounded-xl hover:bg-cyan-500/20 transition text-sm uppercase font-semibold";
-                btn.innerText = topic;
-                btn.onclick = () => selectTopic(topic);
-                grid.appendChild(btn);
-            });
-        }
-
-        function selectTopic(topic) {
-            gameState.topic = topic;
-            renderGameOptions();
-            showScreen(3);
-        }
-
-        // Logic Màn hình 3
-        function renderGameOptions() {
-            const container = document.getElementById('game-options');
-            container.innerHTML = '';
-            let options = [];
-            
-            if (gameState.mode === 'vocabulary') {
-                options = [
-                    { id: 'match', name: 'Game Nối Từ' },
-                    { id: 'capsule', name: 'Game Viên Thuốc (Kéo thả)' }
-                ];
-            } else {
-                options = [
-                    { id: 'listen', name: 'Nghe & Chọn' },
-                    { id: 'sentence-build', name: 'Ghép Câu' }
-                ];
-            }
-
-            options.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = "btn-main glass px-8 py-10 rounded-3xl w-64 text-center font-bold";
-                btn.innerText = opt.name;
-                btn.onclick = () => startGame(opt.id);
-                container.appendChild(btn);
-            });
-        }
-
-        // Logic Màn hình 4: KHỞI TẠO GAME
-        function startGame(gameId) {
-            gameState.game = gameId;
-            document.getElementById('game-title').innerText = gameState.game.toUpperCase();
-            const content = document.getElementById('game-content');
-            content.innerHTML = '';
-            showScreen(4);
-
-            if (gameId === 'match') initMatchGame();
-            if (gameId === 'capsule') initCapsuleGame();
-            if (gameId === 'listen') initListenGame();
-            if (gameId === 'sentence-build') initSentenceBuildGame();
-        }
-
-        // --- CÁC HÀM GAME CHI TIẾT ---
-
-        // 1. GAME NỐI TỪ
-        function initMatchGame() {
-            const content = document.getElementById('game-content');
-            const words = data.vocabulary["Family"]; // Mẫu lấy topic Family
-            let selectedEn = null, selectedVi = null;
-
-            const html = `
-                <div class="flex gap-20">
-                    <div id="col-en" class="flex flex-col gap-4"></div>
-                    <div id="col-vi" class="flex flex-col gap-4"></div>
-                </div>
-            `;
-            content.innerHTML = html;
-
-            const colEn = document.getElementById('col-en');
-            const colVi = document.getElementById('col-vi');
-
-            // Xáo trộn
-            const enWords = [...words].sort(() => Math.random() - 0.5);
-            const viWords = [...words].sort(() => Math.random() - 0.5);
-
-            enWords.forEach(w => {
-                const div = document.createElement('div');
-                div.className = "glass p-4 w-40 text-center rounded-lg match-item";
-                div.innerText = w.en;
-                div.onclick = () => {
-                    document.querySelectorAll('#col-en div').forEach(d => d.classList.remove('selected'));
-                    div.classList.add('selected');
-                    selectedEn = w;
-                    checkMatch();
-                };
-                colEn.appendChild(div);
-            });
-
-            viWords.forEach(w => {
-                const div = document.createElement('div');
-                div.className = "glass p-4 w-40 text-center rounded-lg match-item";
-                div.innerText = w.vi;
-                div.onclick = () => {
-                    document.querySelectorAll('#col-vi div').forEach(d => d.classList.remove('selected'));
-                    div.classList.add('selected');
-                    selectedVi = w;
-                    checkMatch();
-                };
-                colVi.appendChild(div);
-            });
-
-            function checkMatch() {
-                if (selectedEn && selectedVi) {
-                    if (selectedEn.en === selectedVi.en) {
-                        alert("Đúng rồi!");
-                        document.querySelectorAll('.selected').forEach(el => el.style.visibility = 'hidden');
-                    }
-                    selectedEn = null; selectedVi = null;
-                    document.querySelectorAll('.match-item').forEach(d => d.classList.remove('selected'));
-                }
-            }
-        }
-
-        // 2. GAME KÉO THẢ (VIÊN THUỐC)
-        function initCapsuleGame() {
-            const content = document.getElementById('game-content');
-            const words = data.vocabulary["Family"];
-            const target = words[Math.floor(Math.random()*words.length)];
-
-            content.innerHTML = `
-                <div id="game-bound" class="relative w-full h-full flex items-center justify-center">
-                    <div id="capsule" class="text-cyan-400">${target.en}</div>
-                    <div id="draggables-container"></div>
-                </div>
-            `;
-
-            const container = document.getElementById('draggables-container');
-            words.forEach(w => {
-                const el = document.createElement('div');
-                el.className = "draggable glass px-4 py-2";
-                el.innerText = w.vi;
-                el.style.left = Math.random() * 70 + 15 + "%";
-                el.style.top = Math.random() * 70 + 15 + "%";
-                
-                // Logic kéo thả đơn giản
-                el.onmousedown = function(e) {
-                    let shiftX = e.clientX - el.getBoundingClientRect().left;
-                    let shiftY = e.clientY - el.getBoundingClientRect().top;
-                    document.body.append(el);
-                    moveAt(e.pageX, e.pageY);
-
-                    function moveAt(pageX, pageY) {
-                        el.style.left = pageX - shiftX + 'px';
-                        el.style.top = pageY - shiftY + 'px';
-                    }
-
-                    function onMouseMove(e) { moveAt(e.pageX, e.pageY); }
-                    document.addEventListener('mousemove', onMouseMove);
-
-                    el.onmouseup = function() {
-                        document.removeEventListener('mousemove', onMouseMove);
-                        const cap = document.getElementById('capsule').getBoundingClientRect();
-                        const me = el.getBoundingClientRect();
-                        
-                        if (!(me.right < cap.left || me.left > cap.right || me.bottom < cap.top || me.top > cap.bottom)) {
-                            if (w.vi === target.vi) {
-                                alert("Chính xác!");
-                                startGame('capsule'); // Reset game mới
-                            } else {
-                                alert("Sai rồi, thử lại nhé!");
-                            }
-                        }
-                    };
-                };
-                container.appendChild(el);
-            });
-        }
-
-        // 3. GAME NGHE VÀ CHỌN
-        function initListenGame() {
-            const content = document.getElementById('game-content');
-            const quest = data.sentences["Family"][0];
-
-            content.innerHTML = `
-                <div class="flex flex-col items-center gap-10">
-                    <button onclick="speakText('${quest.audio}')" class="w-32 h-32 rounded-full bg-cyan-500/20 border-2 border-cyan-500 flex items-center justify-center animate-pulse">
-                        <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                    </button>
-                    <div class="flex gap-4">
-                        <button onclick="checkAnswer(true)" class="glass p-6 rounded-xl hover:bg-green-500/20">${quest.vi}</button>
-                        <button onclick="checkAnswer(false)" class="glass p-6 rounded-xl hover:bg-red-500/20">Bạn bao nhiêu tuổi?</button>
-                    </div>
-                </div>
-            `;
-        }
-
-        function speakText(txt) {
-            const u = new SpeechSynthesisUtterance(txt);
-            u.lang = 'en-US';
-            window.speechSynthesis.speak(u);
-        }
-
-        function checkAnswer(isCorrect) {
-            alert(isCorrect ? "Đúng!" : "Sai rồi!");
-        }
-
-        // 4. GAME GHÉP CÂU
-        function initSentenceBuildGame() {
-            const content = document.getElementById('game-content');
-            const quest = data.sentences["Family"][0];
-            const shuffledWords = [...quest.words].sort(() => Math.random() - 0.5);
-
-            content.innerHTML = `
-                <div class="flex flex-col items-center gap-12">
-                    <p class="text-gray-400 italic">Dịch: ${quest.vi}</p>
-                    <div id="drop-zone" class="flex gap-2 min-h-[60px] w-[800px] border-b border-cyan-500/50 justify-center flex-wrap"></div>
-                    <div id="words-pool" class="flex gap-3 flex-wrap justify-center"></div>
-                </div>
-            `;
-
-            const pool = document.getElementById('words-pool');
-            const dropZone = document.getElementById('drop-zone');
-
-            shuffledWords.forEach(w => {
-                const btn = document.createElement('button');
-                btn.className = "bg-white/10 px-4 py-2 rounded border border-white/20 hover:bg-cyan-500 hover:text-black transition";
-                btn.innerText = w;
-                btn.onclick = () => {
-                    if (btn.parentElement === pool) {
-                        dropZone.appendChild(btn);
-                    } else {
-                        pool.appendChild(btn);
-                    }
-                    checkSentence();
-                };
-                pool.appendChild(btn);
-            });
-
-            function checkSentence() {
-                const current = Array.from(dropZone.children).map(c => c.innerText).join(' ');
-                if (current === quest.en) {
-                    alert("Hoàn hảo!");
-                    startGame('sentence-build');
-                }
-            }
-        }
-    </script>
+    <!-- KẾT NỐI ENGINE CHÍNH -->
+    <script type="module" src="main.js"></script>
 </body>
 </html>
